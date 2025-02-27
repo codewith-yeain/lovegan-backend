@@ -1,85 +1,94 @@
 import User from "../../models/user_schema.js";
 import path from 'path'
-import bcrypt, { hash } from 'bcrypt';
 // import CoolsmsMessageService from "coolsms-node-sdk";
 // import msgModule from 'coolsms-node-sdk';
 import coolsms from 'coolsms-node-sdk';
+import bcrypt from "bcrypt";
 
 
 const loginUser = async (req, res) => {
+    console.log("로그인 정보 : ", req.body)
+    // const { email, password } = req.body;
+    const findUser = await User.findOne({ email : req.body.email }).lean();
     // console.log(req.body)
-    const findUser = await User.findOne({email : req.body.email}).lean()
-
     if(!findUser){
         return res.status(401).json({
             loginSuccess : false,
             message : "존재하지 않는 아이디 또는 비밀번호입니다."
         })
-    }else{
-        // 비밀번호 검증
-        const passwordMatch = req.body.password === findUser.password;
-        if(!passwordMatch){
+    } 
+    try{
+        const email = req.body.email;
+        const password = req.body.password;
+        const passwordMatch = await bcrypt.compare(password, findUser.password);
+        if(!passwordMatch) {
             return res.status(401).json({
-                loginSuccess : false,
-                message : "존재하지 않는 아이디 또는 비밀번호입니다."
-            })
+                loginSuccess: false,
+                message: "존재하지 않는 아이디 또는 비밀번호입니다."
+            });
         }
-        // 민감한 정보를 제거
-        const { password, ...user} = findUser;
-        //console.log(user)
+        const { password:_, ...user } = findUser;
+
         return res.status(200).json({
             user,
-            loginSuccess : true,
-            message : "로그인이 완료되었습니다"
-        })
+            loginSuccess: true,
+            message: "로그인이 완료되었습니다."
+        });
+    }
+    catch(error){
+        console.error(error);
+        return res.status(500).json({message : "서버 오류 발생"})
     }
 }
+
 const registerUser = async (req, res) => {
     // console.log(req.body)
     const { nickname, email, password, phone } = req.body;
-    const findUser = await User.findOne({email : email}).lean();
+    const findUser = await User.findOne({
+        $or: [{ email: email }, { phone: phone }]
+    }).lean();
 
     if(findUser){
         return res.status(409).json({
             registerSuccess : false,
-            message : "이미 존재하는 이메일입니다."
+            message : "이미 존재하는 계정입니다."
         })
     }else{
-        let register = {
-            email : email,
-            password : password,
-            phone : phone,
-            nickname : nickname
-        }
-        await User.create(register);
-        return res.status(201).json({
-            registerSuccess : true,
-            message : "축하합니다. 회원가입이 완료되었습니다."
-        })
-        // 비밀번호 해시화
-        // const saltRounds = 10; // 해시 강도를 설정(높을 수록 안전);
-        // const plainPassword = req.body.password
-        // console.log("현재 비밀번호", plainPassword);
-
-        // bcrypt.hash(plainPassword, saltRounds, async (err, hashPassword) => {
-        //     if(err){
-        //         console.log(err)
-        //     }else{
-        //         console.log("해쉬 비밀번호", hashPassword);
-        //         let registerUser = {
-        //             email : email,
-        //             password : hashPassword,
-        //             name : name,
-        //             phone : phone
-        //         }
-
-        //         await User.create(registerUser);
-        //         return res.status(201).json({
-        //             message : "Congratulations! Your registration is complete",
-        //             registerSuccess : true
-        //         })
-        //     }
+        // let register = {
+        //     email : email,
+        //     password : password,
+        //     phone : phone,
+        //     nickname : nickname
+        // }
+        // await User.create(register);
+        // return res.status(201).json({
+        //     registerSuccess : true,
+        //     message : "축하합니다. 회원가입이 완료되었습니다."
         // })
+        // 비밀번호 해시화
+        const saltRounds = 10; // 해시 강도를 설정(높을 수록 안전);
+        const plainPassword = req.body.password
+        console.log("현재 비밀번호", plainPassword);
+
+        bcrypt.hash(plainPassword, saltRounds, async (err, hashPassword) => {
+            if(err){
+                console.log(err)
+            }else{
+                console.log("해쉬 비밀번호", hashPassword);
+                let registerUser = {
+                    email : email,
+                    password : hashPassword,
+                    nickname : nickname,
+                    phone : phone
+                }
+
+                await User.create(registerUser);
+                return res.status(201).json({
+                    message : "축하합니다. 회원가입이 완료되었습니다.",
+                    registerSuccess : true
+                })
+            }
+        })
     }
 }
 const updateUser = async (req, res) => {
@@ -112,6 +121,58 @@ const updatePicture = async (req, res) => {
     })
 }
 
+const resetPW = async (req, res) => {
+    console.log(req.body);
+    const {newPW, confirmPW, phoneNumber} = req.body;
+    try{
+        const findUser = await User.findOne({phone : phoneNumber});
+        if(!findUser){
+            return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+        }
+        if(newPW !== confirmPW){
+            return res.status(404).json({message : "비밀번호가 일치하지 않습니다."});
+        }
+        const passwordMatch = await bcrypt.compare(newPW, findUser.password);
+        if(passwordMatch) {
+            return res.status(401).json({
+                message: "현재 비밀번호와 일치합니다."
+            });
+        }
+
+        const saltRounds = 10;
+
+        bcrypt.hash(newPW, saltRounds, async (err, hashPassword) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: "비밀번호 해싱 오류 발생" });
+            }
+
+            console.log("해시된 비밀번호:", hashPassword);
+
+            try {
+                const result = await User.updateOne(
+                    { phone: phoneNumber },
+                    { $set: { password: hashPassword } }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(500).json({ message: "비밀번호 변경 실패" });
+                }
+
+                return res.status(200).json({ message: "비밀번호 변경 성공" });
+            } 
+            catch (error) {
+                console.error(error);
+                return res.status(500).json({ message: "서버 오류 발생" });
+            }
+        })
+    }
+    catch(error){
+        console.error(error);
+        return res.status(500).json({ message: "서버 오류 발생" });
+    }
+};
+
 const updatePassword = async (req, res) => { 
     try {
         // 사용자 찾기
@@ -123,18 +184,32 @@ const updatePassword = async (req, res) => {
             return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
         }
 
-        // ✅ 현재 비밀번호 일치 여부 확인
-        if (findUser.password !== currentPassword) {
+        // // ✅ 현재 비밀번호 일치 여부 확인
+        // if (findUser.password !== currentPassword) {
+        //     return res.status(401).json({ message: "현재 비밀번호가 일치하지 않습니다." });
+        // }
+
+        // 현재 비밀번호 해시 비교 (bcrypt.compare 사용)
+        const isMatch = await bcrypt.compare(currentPassword, findUser.password);
+        if (!isMatch) {
             return res.status(401).json({ message: "현재 비밀번호가 일치하지 않습니다." });
         }
 
-        // 비밀번호 업데이트 (updateOne 수정)
-        await User.updateOne(
-            { email: req.body.email },  // 검색 조건 수정
-            { $set: { password: req.body.newPassword } } // $set 사용
+        // 새 비밀번호 해싱
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // 비밀번호 업데이트 (해싱된 비밀번호 사용)
+        const result = await User.updateOne(
+            { email }, 
+            { $set: { password: hashedPassword } }
         );
 
-        res.status(200).json({ message: "비밀번호 변경 성공" });
+        if (result.modifiedCount === 0) {
+            return res.status(500).json({ message: "비밀번호 변경 실패" });
+        }
+
+        return res.status(200).json({ message: "비밀번호 변경 성공" });
     } catch (error) {
         console.error("비밀번호 변경 중 오류:", error);
         res.status(500).json({ message: "서버 오류" });
@@ -210,14 +285,16 @@ const generateVerificationCode = (phoneNumber) => {
  * 휴대폰 번호로 인증 코드 전송
  */
 const sendVerificationCode = async (req, res) => {
-    const { phoneNumber } = req.body;
+    const { phoneNumber, email } = req.body;
+    console.log(req.body);
     if (!phoneNumber) {
-        return res.status(400).json({ success: false, message: "휴대폰 번호를 제공해야 합니다." });
+        return res.status(400).json({ success: false, message: "휴대폰 번호를 제공해야 합니다.", email : req.body.email });
     }
 
     try {
         // 인증 코드 생성 및 저장
         const verificationCode = generateVerificationCode(phoneNumber);
+        console.log("인증번호 저장 : ", verificationCode)
 
         // 메시지 구성
         const message = {
@@ -233,7 +310,7 @@ const sendVerificationCode = async (req, res) => {
 
         // 문자 전송
         await messageService.sendOne(message);
-        res.status(200).json({ success: true, message: "인증번호가 전송되었습니다." });
+        res.status(200).json({ success: true, message: "인증번호가 전송되었습니다.", email: req.body.email });
     } catch (error) {
         console.error("문자 전송 오류:", error);
         res.status(500).json({ success: false, message: "문자 전송에 실패했습니다." });
@@ -294,6 +371,51 @@ const verifyCode = async (req, res) => {
         res.status(500).json({ success: false, message: "서버 오류가 발생했습니다." });
     }
 };
+// 회원가입할 때 인증번호 인증
+const signupVerifyCode = async (req, res) => {
+    console.log("요청받은 데이터 : ", req.body)
+    const { phoneNumber, code } = req.body;
+    console.log("verifyCode 함수: " + phoneNumber);
+    console.log("verifyCode 함수: " + code);
+
+    if (!phoneNumber || !code) {
+        return res.status(400).json({ success: false, message: "휴대폰 번호와 인증 코드를 제공해야 합니다." });
+    }
+
+    try {
+        const storedData = verificationCodes[phoneNumber];
+        console.log("저장된 인증번호:", storedData);
+
+        if (!storedData) {
+            return res.status(400).json({ success: false, message: "인증 코드가 존재하지 않습니다." });
+        }
+
+        if (String(storedData).trim() !== String(code).trim()) {
+            return res.status(400).json({ success: false, message: "인증 코드가 올바르지 않습니다." });
+        }
+
+        // 인증 완료 후 코드 삭제
+        delete verificationCodes[phoneNumber];
+
+        return res.status(200).json({ success: true, message: "인증 성공!" });
+
+    } catch (error) {
+        console.error("인증 코드 확인 오류:", error);
+        return res.status(500).json({ success: false, message: "서버 오류 발생" });
+    }
+}
+
+const findPhoneNumber = async (req, res) => {
+    console.log("아이디찾기 데이터 : ", req.body);
+    const user = await User.findOne({phone : req.body.phoneNumber});
+    console.log(user.email)
+    if(!user){
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+    }
+    else{
+        return res.status(200).json({success : true, message : "아이디 찾기 성공", email : user.email})
+    }
+}
 
 // 내 팔로잉 조회
 const getMyFollowing = async (req, res) => {
@@ -333,6 +455,7 @@ const getMyFollowing = async (req, res) => {
         return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 };
+
 
 // 내 팔로잉 조회
 const getMyFollowers = async (req, res) => {
@@ -442,4 +565,5 @@ const toggleFollow = async (req, res) => {
     }
 }
 
-export {loginUser, registerUser, updateUser, deleteUser, updatePicture, updatePassword, updateNickname, updateIntro, sendVerificationCode, verifyCode, getMyFollowing, getMyFollowers, followStatus, toggleFollow }
+export {loginUser, registerUser, updateUser, deleteUser, updatePicture, updatePassword, updateNickname, updateIntro, sendVerificationCode, verifyCode, getMyFollowing, getMyFollowers, followStatus, toggleFollow, signupVerifyCode, findPhoneNumber, resetPW }
+

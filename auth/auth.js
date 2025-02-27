@@ -99,7 +99,7 @@ const naverVerify = async (accessToken, refreshToken, profile, done) => {
     const accessToken = jwt.sign(
       {
         email : email,
-        issuer : "Yunsik"
+        issuer : "YooHyun"
       },
       SECRET_KEY,
       {
@@ -112,10 +112,10 @@ const naverVerify = async (accessToken, refreshToken, profile, done) => {
     done(null, exUser)
   }else {
     // 신규 회원일 경우 회원가입
-    const createdSnsUser = await Sns.create({
+    const createdSnsUser = await Sns.findOneAndUpdate({
       snsId : id,
       email : email,
-      name : name,
+      nickname : name,
       phone : mobile,
       picture : profileImage,
       provider : provider
@@ -123,14 +123,14 @@ const naverVerify = async (accessToken, refreshToken, profile, done) => {
 
     const newUser = await User.create({
       email: createdSnsUser.email,
-      name : name,
+      nickname : name,
       phone : mobile,
       picture : createdSnsUser.picture,
       snsId : createdSnsUser._id
     })
     
     newUser.accessToken = accessToken;
-    done(null, newUser);
+    done(null, {...newUser, accessToken});
   }
 
   } catch (error) {
@@ -192,7 +192,7 @@ const googleVerify = async (accessToken, refreshToken, profile, done) => {
 
       newUser.accessToken = accessToken;
       console.log("newUser", newUser)
-      done(null, newUser);
+      done(null, {...newUser, accessToken});
     }
 
   } catch (error) {
