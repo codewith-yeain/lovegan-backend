@@ -141,21 +141,32 @@ const addReply = async (req, res) => {
             return res.status(400).json({ message: "부모id, 유저id, content 필드를 찾을 수 없습니다." });
         }
 
-        const comment = await Comment.findById(content);
+        const comment = await Comment.findById(parentCommentId);
         if (!comment) {
             return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
         }
 
+        // '익명' 사용자를 처리
+        let user = null;
+
+        if (userId === "익명") {
+            user = { nickname: "익명" }; // 익명 사용자 처리 (ObjectId가 아님)
+        } else {
+            user = await User.findOne({ nickname: userId });
+            if (!user) {
+                return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+            }
+        }
+
         const newReply = {
-            user: userId,
-            content: content,   
+            user: user.nickname === "익명" ? user : user._id, // 익명이면 닉네임 유지, 아니면 ObjectId
+            content: content,
             createAt: new Date(),
         };
         
         comment.replies.push(newReply); // 기존 댓글에 대댓글 추가
         await comment.save();
         
-
         return res.status(201).json({
             success: true,
             message: "대댓글이 성공적으로 추가되었습니다.",
