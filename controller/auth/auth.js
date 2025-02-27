@@ -71,4 +71,15 @@ const jwtStrategy = async (req, res, next) => {
 
 }
 
-export { localStrategy, jwtStrategy}
+// 네이버 로그인 
+const naverStrategy = async (req, res, next) => {
+  try {
+    const naverAuthenticatedUser = req.user;
+    console.log(naverAuthenticatedUser);
+  }
+  catch(error){
+    console.error(error)
+    next(error)
+  }
+}
+export { localStrategy, jwtStrategy, naverStrategy}

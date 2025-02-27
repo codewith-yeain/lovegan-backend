@@ -3,6 +3,7 @@ import passport from "passport";
 import { localStrategy, jwtStrategy } from "../../controller/auth/auth.js";
 
 
+
 const authRouter = express.Router();
 const clientUrl = "http://localhost:3000"
 // auth
@@ -15,7 +16,7 @@ authRouter.get("/naver", passport.authenticate('naver', { session : false, authT
 authRouter.get("/naver/callback", passport.authenticate('naver', {session : false, failureRedirect : clientUrl}), (req, res) => {
     console.log("네이버 로그인 후 유저의 정보", req.user)
     const accessToken = req.user.accessToken;
-    return res.redirect(`${clientUrl}/my?accessToken=${accessToken}`);
+    return res.redirect(clientUrl);
 });
 
 // 구글 로그인
