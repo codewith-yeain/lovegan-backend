@@ -6,7 +6,6 @@ import coolsms from 'coolsms-node-sdk';
 import bcrypt from "bcrypt";
 
 
-
 const loginUser = async (req, res) => {
     console.log("로그인 정보 : ", req.body)
     // const { email, password } = req.body;
@@ -185,18 +184,32 @@ const updatePassword = async (req, res) => {
             return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
         }
 
-        // ✅ 현재 비밀번호 일치 여부 확인
-        if (findUser.password !== currentPassword) {
+        // // ✅ 현재 비밀번호 일치 여부 확인
+        // if (findUser.password !== currentPassword) {
+        //     return res.status(401).json({ message: "현재 비밀번호가 일치하지 않습니다." });
+        // }
+
+        // 현재 비밀번호 해시 비교 (bcrypt.compare 사용)
+        const isMatch = await bcrypt.compare(currentPassword, findUser.password);
+        if (!isMatch) {
             return res.status(401).json({ message: "현재 비밀번호가 일치하지 않습니다." });
         }
 
-        // 비밀번호 업데이트 (updateOne 수정)
-        await User.updateOne(
-            { email: req.body.email },  // 검색 조건 수정
-            { $set: { password: req.body.newPassword } } // $set 사용
+        // 새 비밀번호 해싱
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // 비밀번호 업데이트 (해싱된 비밀번호 사용)
+        const result = await User.updateOne(
+            { email }, 
+            { $set: { password: hashedPassword } }
         );
 
-        res.status(200).json({ message: "비밀번호 변경 성공" });
+        if (result.modifiedCount === 0) {
+            return res.status(500).json({ message: "비밀번호 변경 실패" });
+        }
+
+        return res.status(200).json({ message: "비밀번호 변경 성공" });
     } catch (error) {
         console.error("비밀번호 변경 중 오류:", error);
         res.status(500).json({ message: "서버 오류" });
