@@ -1,8 +1,8 @@
 import mongoose, { model, Schema } from "mongoose";
 
 const productPhotoSchema = new Schema({
-    productId: {type: mongoose.Schema.Types.ObjectId, ref: "Product"},
-    url: String,
+    product: {type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true},
+    url: {type: String, required: true}
 });
 
 export default model("ProductPhoto", productPhotoSchema, "productPhoto");

@@ -10,7 +10,7 @@ const productSchema = new Schema({
     tag : {type : String, required : true},
     categories : {type : String, required : true},
     image : {type : String},
-    photoId: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductPhoto' }
+    photoId: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProductPhoto' }]
 })
 
 export default model("Product", productSchema, "product");

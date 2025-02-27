@@ -8,3 +8,4 @@ const scrapSchema = new Schema({
 });
 
 export default model("Scrap", scrapSchema, "scraps");
+

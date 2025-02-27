@@ -34,7 +34,7 @@ const __dirname = path.dirname(__filename)
 
 
 // sns 로그인시 session이 필요할 수 있음, JWT를 생성해서 보낼 수 있다.
-// import session from 'express-session';
+import session from 'express-session';
 
 connect(); // mongoDB 연결
 dotenv.config() // 환경변수 설정
@@ -101,26 +101,28 @@ const uploadMiddleware = upload.single("picture");
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(uploadMiddleware);
 
+// session 설명 
+app.use(session(
+  {
+    secret : "SECRET_KEY",
+    resave : false,
+    saveUninitialized : true
+  }
+))
+app.use(passport.session())
+// passport로 인증된 유저를 session에 등록해주는 메서드
+passport.serializeUser((user, done) => {
+  done(null, user)
+})
+// passport로 인증된 유저를 session에서 제거해주는 메서드
+passport.deserializeUser((user, done) => {
+  done(null, user)
+})
+
 
 app.use("/", rootRouter);
 app.listen(port, () => {
   console.log("express 서버 실행!")
 })
 
-// session 주석
-// app.use(session(
-//   {
-//     secret : "SECRET_KEY",
-//     resave : false,
-//     saveUninitialized : true
-//   }
-// ))
-// app.use(passport.session())
-// // passport로 인증된 유저를 session에 등록해주는 메서드
-// passport.serializeUser((user, done) => {
-//   done(null, user)
-// })
-// // passport로 인증된 유저를 session에서 제거해주는 메서드
-// passport.deserializeUser((user, done) => {
-//   done(null, user)
-// })
+

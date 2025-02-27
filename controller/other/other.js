@@ -1,4 +1,37 @@
+import otherPhoto from '../../models/otherPhoto_schema.js';
 import Other from '../../models/other_schema.js'
+
+const addPhoto = async () => {
+     try {
+         const other = await Other.findOne({ title: "대나무 칫솔" });
+         if (!other) throw new Error("상품 없음");
+ 
+         console.log("찾은 상품:", other); // 확인용 로그
+ 
+         const photo = await otherPhoto.create({
+             other: other._id, // 필드명 확인
+             url: "https://lovegan-photo-bucket.s3.ap-northeast-2.amazonaws.com/tooth+brush.jpg"
+         });
+
+         await photo.save();
+ 
+         console.log("생성된 otherPhoto:", photo); // 생성 여부 확인
+ 
+         if (!other) {
+             console.error("OtherPhoto 생성 실패");
+             return;
+         }
+ 
+         other.photoId = other._id; // Other에 photoId 연결
+         await other.save();
+ 
+         console.log("사진 추가 완료");
+     } catch (error) {
+         console.error("에러 발생:", error);
+     }
+ };
+ 
+ addPhoto();
 
 const getOther = async (req, res) => {
      const {categories, tag, clickSort} = req.query;

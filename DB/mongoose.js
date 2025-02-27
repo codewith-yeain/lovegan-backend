@@ -2,6 +2,7 @@ import connect from "../connect/connect.js";
 import Product from '../models/product_schema.js';
 import Other from '../models/other_schema.js'
 import User from "../models/user_schema.js";
+import ProductPhoto from "../models/productPhoto_schema.js";
 
 connect();
 
