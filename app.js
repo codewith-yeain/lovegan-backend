@@ -44,7 +44,10 @@ const app = express();
 
 // .use()는 미들웨어
 // 어떤 요청이든 지정된 로직보다 먼저 작업한다. 즉 전처리이다.
-app.use(bodyParser.json());
+// app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
 
 // CORS 전체 허용
 // CORS 테스트용 서버에서 모두 허용
@@ -57,15 +60,26 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({extended : false}));
 app.use(cors({
   origin : "http://localhost:3000",
-  method : ['GET', 'POST', 'DELETE', 'PUT'],
+  methods : ['GET', 'POST', 'DELETE', 'PUT'],
   credentials : true,
 }))
+
+// passport 로직
+initializePassport();
 
 // passport 미들웨어 등록
 app.use(passport.initialize());
 
-// passport 로직
-initializePassport()
+
+// session 설명 
+app.use(session(
+  {
+    secret : "SECRET_KEY",
+    resave : false,
+    saveUninitialized : true
+  }
+))
+app.use(passport.session())
 
 // 이미지 등록 로직
 const uploadFolder = "uploads/profiles"
@@ -101,15 +115,7 @@ const uploadMiddleware = upload.single("picture");
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(uploadMiddleware);
 
-// session 설명 
-app.use(session(
-  {
-    secret : "SECRET_KEY",
-    resave : false,
-    saveUninitialized : true
-  }
-))
-app.use(passport.session())
+
 // passport로 인증된 유저를 session에 등록해주는 메서드
 passport.serializeUser((user, done) => {
   done(null, user)
