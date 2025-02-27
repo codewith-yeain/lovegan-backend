@@ -176,56 +176,6 @@ const addReply = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ message: "대댓글 저장 실패", error });
     }
-    // try {
-    //     const { commentId, userId, content } = req.body;
-    //     // console.log(req.body);
-        
-    //     if(!commentId || !userId || !content) {
-    //         return res.status(200).json({ message : "부모id, 유저id, content 필드를 찾을 수 없습니다." })
-    //     }
-        
-    //     // const parentComment = await Comment.findById(commentId)
-    //     // .populate('user', 'nickname')
-    //     // .populate({
-    //     //     path: 'replies',
-    //     //     populate: { path : 'replies', select : 'nickname'}
-    //     // })
-
-    //     // if (!parentComment) {
-    //     //     return res.status(404).json({ message: "부모 댓글을 찾을 수 없습니다." });
-    //     // }
-
-    //     const comment = await Comment.findById(commentId);
-    //     if (!comment) {
-    //         return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
-    //     }
-
-    //     const newReply = new Comment({
-    //         user: userId,
-    //         // post: parentComment.post, // 원래 게시글 ID 유지
-    //         content,
-    //         createAt: new Date()
-    //     });
-
-    //     comment.replies.push(newReply);
-    //     await comment.save();
-
-    //     // 저장 후 부모 댓글의 `replies` 배열에 추가
-    //     // const savedReply = await newReply.save();
-
-    //     // console.log("부모 댓글의 replies 배열 :", parentComment.replies);
-    //     // parentComment.replies.push(savedReply._id);
-    //     // await parentComment.save();
-
-    //     return res.status(201).json({
-    //         success: true,
-    //         message: "대댓글이 성공적으로 추가되었습니다.",
-    //         reply: newReply
-    //     });
-
-    // } catch (error) {
-    //     res.status(500).json({ message : "대댓글 저장 실패", error });
-    // }
 };
 
 // 게시글 조회
