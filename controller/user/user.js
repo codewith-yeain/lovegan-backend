@@ -6,7 +6,6 @@ import coolsms from 'coolsms-node-sdk';
 import bcrypt from "bcrypt";
 
 
-
 const loginUser = async (req, res) => {
     console.log("로그인 정보 : ", req.body)
     // const { email, password } = req.body;
