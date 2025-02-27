@@ -67,7 +67,7 @@ const getComment = async (req, res) => {
         .populate('user', 'id email nickname intro')
         .populate({
             path: 'replies',
-            populate: { path: 'user', select: 'nickname' }
+            // populate: { path: 'user', select: 'nickname' }
         })
         .lean()
         const commentCount = comments.length;
@@ -134,26 +134,27 @@ const addComment = async (req, res) => {
 // 대댓글 추가
 const addReply = async (req, res) => {
     try {
-        const { commentId, userId, content } = req.body;
         console.log(req.body); // 불러와짐
+        const { parentCommentId, userId, content } = req.body;
         
-        if (!commentId || !userId || !content) {
+        if (!parentCommentId || !userId || !content) {
             return res.status(400).json({ message: "부모id, 유저id, content 필드를 찾을 수 없습니다." });
         }
 
-        const comment = await Comment.find(content);
+        const comment = await Comment.findById(content);
         if (!comment) {
             return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
         }
 
-        const newReply = new Comment.replies({
+        const newReply = {
             user: userId,
-            content: content,
+            content: content,   
             createAt: new Date(),
-        });
-
-        // comment.replies.push(newReply);
-        await newReply.save();
+        };
+        
+        comment.replies.push(newReply); // 기존 댓글에 대댓글 추가
+        await comment.save();
+        
 
         return res.status(201).json({
             success: true,
