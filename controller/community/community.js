@@ -67,7 +67,7 @@ const getComment = async (req, res) => {
         .populate('user', 'id email nickname intro')
         .populate({
             path: 'replies',
-            populate: { path: 'user', select: 'nickname' }
+            // populate: { path: 'user', select: 'nickname' }
         })
         .lean()
         const commentCount = comments.length;
@@ -134,38 +134,47 @@ const addComment = async (req, res) => {
 // 대댓글 추가
 const addReply = async (req, res) => {
     try {
-        const { parentId, userId, content } = req.body;
+        console.log(req.body); // 불러와짐
+        const { parentCommentId, userId, content } = req.body;
         
-        if(!parentId || !userId || !content) {
-            return res.status(200).json({ message : "부모id, 유저id, content 필드를 찾을 수 없습니다." })
-        }
-        
-        const parentComment = await Comment.findById(parentId);
-        if (!parentComment) {
-            return res.status(404).json({ message: "부모 댓글을 찾을 수 없습니다." });
+        if (!parentCommentId || !userId || !content) {
+            return res.status(400).json({ message: "부모id, 유저id, content 필드를 찾을 수 없습니다." });
         }
 
-        const newReply = new Comment({
-            user: userId,
-            post: parentComment.post, // 부모 댓글과 같은 게시글 ID
+        const comment = await Comment.findById(parentCommentId);
+        if (!comment) {
+            return res.status(404).json({ message: "댓글을 찾을 수 없습니다." });
+        }
+
+        // '익명' 사용자를 처리
+        let user = null;
+
+        if (userId === "익명") {
+            user = { nickname: "익명" }; // 익명 사용자 처리 (ObjectId가 아님)
+        } else {
+            user = await User.findOne({ nickname: userId });
+            if (!user) {
+                return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+            }
+        }
+
+        const newReply = {
+            user: user.nickname === "익명" ? user : user._id, // 익명이면 닉네임 유지, 아니면 ObjectId
             content: content,
             createAt: new Date(),
-            updateAt: new Date(),
-        });
-
-        // 저장 후 부모 댓글의 `replies` 배열에 추가
-        const savedReply = await newReply.save();
-        parentComment.replies.push(savedReply._id);
-        await parentComment.save();
-
+        };
+        
+        comment.replies.push(newReply); // 기존 댓글에 대댓글 추가
+        await comment.save();
+        
         return res.status(201).json({
             success: true,
             message: "대댓글이 성공적으로 추가되었습니다.",
-            reply: savedReply
+            reply: newReply
         });
 
     } catch (error) {
-        res.status(500).json({ message : "대댓글 저장 실패", error });
+        return res.status(500).json({ message: "대댓글 저장 실패", error });
     }
 };
 
