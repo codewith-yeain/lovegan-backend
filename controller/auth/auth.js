@@ -6,11 +6,13 @@ dotenv.config()
 const SECRET_KEY = process.env.SECRET_KEY;
 
 const localStrategy = async (req, res, next) => {
+  console.log("📌 localStrategy 실행됨");
+  console.log("req.user",req.user)
   try {
     const error = req.error;
     const authenticatedUser = req.user;
     const info = req.info;
-    console.log(authenticatedUser)
+    console.log("authenticatedUser,", authenticatedUser)
 
     if(error || !authenticatedUser){
       res.status(400).json({message : info.message})
@@ -53,6 +55,7 @@ const localStrategy = async (req, res, next) => {
 }
 
 const jwtStrategy = async (req, res, next) => {
+    console.log("자동로그인 시작")
     try{
         const jwtAuthenticatedUser = req.user;
         const {password, ...user} = jwtAuthenticatedUser;

@@ -15,6 +15,8 @@ import { Strategy as KakaoStrategy } from 'passport-kakao';
 dotenv.config()
 const SECRET_KEY = process.env.SECRET_KEY;
 
+console.log("📌 SECRET_KEY:", SECRET_KEY);  // 디버깅
+
 // passport의 약속된 필드 이름을 변경
 const passportConfig = {
   usernameField : 'email', passwordField : 'password'
@@ -24,15 +26,17 @@ const passportVerify = async (email, password, done) => {
   try {
     // 아이디 검증
     const user = await User.findOne({ email: email }).lean();
+    console.log("user, ", user)
     if(!user){
       return done(null, false, {message : "존재하지 않는 아이디 또는 비밀번호입니다."})
     }
 
     // 아이디 검증된 회원의 비밀번호 검증
-    const passwordMatch = password === user.password;
+    const passwordMatch = await bcrypt.compare(password, user.password);
     if(!passwordMatch){
       return done(null, false, {message : "존재하지 않는 아이디 또는 비밀번호입니다."})
     }
+    console.log("로그인 성공!", user);
     // 비밀번호가 같아면 유저 데이터를 전송 
     return done(null, user);
  
